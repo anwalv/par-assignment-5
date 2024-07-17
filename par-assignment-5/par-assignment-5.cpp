@@ -27,7 +27,9 @@ int getPriority(const std::string& oper) {
     return 0;
 }
 
-queue<string> Tokenized(string input) {
+unordered_map<string, int> variables;
+
+queue<string> Tokenized(string input, unordered_map<string, int>& variables) {
     queue<string> tokens;
     string curToken = "";
 
@@ -43,6 +45,10 @@ queue<string> Tokenized(string input) {
             --i;
             if (input[i] == '-'  || input[i] == '+' || input[i] == '*' || input[i] == '/'|| input[i] == '(' || input[i] == ')'  || input[i] == ',') {
                 tokens.push(std::string(1, input[i]));
+            }
+            auto contains = variables.find(funcName);
+            if (contains != variables.end()) {
+                curToken = to_string(contains->second);
             }
             else {
                 tokens.push(funcName);
@@ -71,73 +77,6 @@ queue<string> Tokenized(string input) {
     return tokens;
 }
 
-queue<string> ReverseNotation(queue<string> tokens) {
-    queue<string> outputQueue;
-    stack<string> operatorStack;
-    stack<int> argCountStack;
-
-    while (!tokens.empty()) {
-        string token = tokens.front();
-        tokens.pop();
-
-        if (isdigit(token[0]) || (token[0] == '-' && token.length() > 1)) {
-            outputQueue.push(token);
-        }
-        else if (token == "+" || token == "-" || token == "*" || token == "/"
-                 || token == "pow" || token == "abs" || token == "min" || token == "max") {
-            while (!operatorStack.empty() && getPriority(operatorStack.top()) >= getPriority(token)) {
-                outputQueue.push(operatorStack.top());
-                operatorStack.pop();
-            }
-            operatorStack.push(token);
-
-            if (token == "min" || token == "max") {
-                argCountStack.push(2);
-            }
-            else if (token == "abs") {
-                argCountStack.push(1);
-            }
-            else if (token == "pow") {
-                argCountStack.push(2);
-            }
-        }
-        else if (token == "(") {
-            operatorStack.push(token);
-        }
-        else if (token == ")") {
-            while (!operatorStack.empty() && operatorStack.top() != "(") {
-                outputQueue.push(operatorStack.top());
-                operatorStack.pop();
-            }
-            operatorStack.pop();
-
-            if (!operatorStack.empty() && (operatorStack.top() == "pow" || operatorStack.top() == "abs"
-                                           || operatorStack.top() == "min" || operatorStack.top() == "max")) {
-                outputQueue.push(operatorStack.top());
-                operatorStack.pop();
-            }
-            //argCountStack.pop();
-        }
-        else if (token == ",") {
-            while (!operatorStack.empty() && operatorStack.top() != "(") {
-                outputQueue.push(operatorStack.top());
-                operatorStack.pop();
-            }
-        }
-        else {
-            operatorStack.push(token);
-        }
-    }
-
-    while (!operatorStack.empty()) {
-        outputQueue.push(operatorStack.top());
-        operatorStack.pop();
-    }
-
-    return outputQueue;
-}
-
-
 int evaluateRPN(queue<string> rpnTokens) {
     stack<int> resultStack;
 
@@ -148,7 +87,7 @@ int evaluateRPN(queue<string> rpnTokens) {
         if (isdigit(token[0]) || (token[0] == '-' && token.length() > 1)) {
             resultStack.push(stoi(token));
         }
-        else{
+        else {
             if (token == "+") {
                 int operand2 = resultStack.top();
                 resultStack.pop();
@@ -208,16 +147,86 @@ int evaluateRPN(queue<string> rpnTokens) {
     return resultStack.top();
 }
 
+queue<string> ReverseNotation(queue<string> tokens) {
+    queue<string> outputQueue;
+    stack<string> operatorStack;
+
+
+    while (!tokens.empty()) {
+        string token = tokens.front();
+        tokens.pop();
+        if (token == "var") {
+            string var_name = tokens.front();
+            tokens.pop();
+            token = tokens.front();
+            if (token == "=") {
+                tokens.pop();
+                queue<string> var_RPN = ReverseNotation(tokens);
+                int value = evaluateRPN(var_RPN);
+                variables[var_name] = value;
+            }
+
+        }
+        if (isdigit(token[0]) || (token[0] == '-' && token.length() > 1)) {
+            outputQueue.push(token);
+        }
+        else if (token == "+" || token == "-" || token == "*" || token == "/"
+                 || token == "pow" || token == "abs" || token == "min" || token == "max") {
+            while (!operatorStack.empty() && getPriority(operatorStack.top()) >= getPriority(token)) {
+                outputQueue.push(operatorStack.top());
+                operatorStack.pop();
+            }
+            operatorStack.push(token);
+        }
+        else if (token == "(") {
+            operatorStack.push(token);
+        }
+        else if (token == ")") {
+            while (!operatorStack.empty() && operatorStack.top() != "(") {
+                outputQueue.push(operatorStack.top());
+                operatorStack.pop();
+            }
+            operatorStack.pop();
+
+            if (!operatorStack.empty() && (operatorStack.top() == "pow" || operatorStack.top() == "abs"
+                                           || operatorStack.top() == "min" || operatorStack.top() == "max")) {
+                outputQueue.push(operatorStack.top());
+                operatorStack.pop();
+            }
+        }
+        else if (token == ",") {
+            while (!operatorStack.empty() && operatorStack.top() != "(") {
+                outputQueue.push(operatorStack.top());
+                operatorStack.pop();
+            }
+        }
+        else {
+            operatorStack.push(token);
+        }
+    }
+
+    while (!operatorStack.empty()) {
+        outputQueue.push(operatorStack.top());
+        operatorStack.pop();
+    }
+
+    return outputQueue;
+}
+
+
 int main() {
     string input;
-    cout << "Enter expression: ";
-    getline(cin, input);
+    while (input != "stop")
+    {
+        cout << "Enter expression: ";
+        getline(cin, input);
 
-    queue<string> tokens = Tokenized(input);
-    queue<string> rpnTokens = ReverseNotation(tokens);
+        queue<string> tokens = Tokenized(input, va);
+        queue<string> rpnTokens = ReverseNotation(tokens);
 
-    int result = evaluateRPN(rpnTokens);
-    cout << "Result: " << result << endl;
+        int result = evaluateRPN(rpnTokens);
+        cout << "Result: " << result << endl;
+    }
 
     return 0;
 }
